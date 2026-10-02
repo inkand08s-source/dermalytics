@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dermalytics — Computational Bio-Forensic Cutaneous Analysis</title>
+  <style>
+    :root {
+      --bg-dark: #030712;
+      --card-bg: #0b1329;
+      --card-border: #162444;
+      --accent-cyan: #06b6d4;
+      --accent-blue: #3b82f6;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --warn-bg: #451a0366;
+      --warn-border: #d97706;
+      --good: #10b981;
+      --moderate: #f59e0b;
+      --low: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; padding: 24px 16px; line-height: 1.5; }
+    .container { max-width: 1120px; margin: 0 auto; }
+
+    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 16px; margin-bottom: 24px; flex-wrap: wrap; gap: 14px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo-badge { background: #06b6d420; border: 1px solid var(--accent-cyan); color: var(--accent-cyan); padding: 6px 12px; border-radius: 6px; font-weight: 800; font-size: 15px; letter-spacing: 1px; }
+    .header-status-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .sys-status { font-size: 11px; background: #08142c; border: 1px solid #1e3a8a; padding: 5px 10px; border-radius: 999px; color: #38bdf8; display: flex; align-items: center; gap: 6px; }
+    .research-status { font-size: 11px; background: #111e38; border: 1px solid #334155; padding: 5px 10px; border-radius: 999px; color: #cbd5e1; }
+    .pulse-dot { width: 7px; height: 7px; background: #38bdf8; border-radius: 50%; box-shadow: 0 0 8px #38bdf8; }
+
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 22px; margin-bottom: 22px; box-shadow: 0 4px 20px #00000040; }
+    .section-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--accent-cyan); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    
+    .btn { background: var(--accent-cyan); color: #020617; border: none; padding: 10px 18px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { background: #22d3ee; box-shadow: 0 0 12px #06b6d480; }
+    .btn-secondary { background: #13223f; color: #e2e8f0; border: 1px solid #233863; }
+    .btn-secondary:hover { background: #1e3563; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+    /* Canvas workspace */
+    .canvas-flex { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+    .canvas-panel { display: flex; flex-direction: column; align-items: center; }
+    .canvas-wrapper { position: relative; border: 1px solid var(--card-border); border-radius: 8px; overflow: hidden; background: #000; cursor: crosshair; }
+    canvas { display: block; max-width: 100%; }
+
+    /* Metrics Grid */
+    .grid-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 14px; }
+    .metric-card { background: #060d1f; border: 1px solid var(--card-border); border-radius: 8px; padding: 14px; }
+    .metric-label { font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
+    .metric-val { font-size: 18px; font-family: monospace; font-weight: 700; color: #fff; }
+    .metric-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+    /* Histogram chart */
+    .hist-container { display: flex; align-items: flex-end; gap: 4px; height: 90px; padding: 8px 0; border-bottom: 1px solid #1e293b; }
+    .hist-bar { flex: 1; background: #3b82f6; border-radius: 2px 2px 0 0; min-height: 2px; }
+
+    /* Spatial 4x4 matrix */
+    .spatial-matrix { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; width: 140px; height: 140px; background: #000; padding: 4px; border-radius: 6px; border: 1px solid #233863; }
+    .matrix-node { width: 100%; height: 100%; border-radius: 2px; }
+
+    /* Classification Hero Banner */
+    .estimate-hero { background: linear-gradient(135deg, #091736 0%, #0d234d 100%); border: 1px solid #1d4ed8; border-radius: 12px; padding: 22px; margin-top: 14px; }
+    .estimate-tag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #7dd3fc; }
+    .estimate-class { font-size: 26px; font-weight: 800; color: #38bdf8; font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin-top: 4px; }
+    .estimate-interval { font-size: 16px; font-family: monospace; font-weight: 700; color: #cbd5e1; margin-top: 2px; }
+    .badge-confidence { display: inline-block; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; text-transform: uppercase; margin-top: 8px; }
+
+    /* Accordion */
+    .accordion-header { background: #081124; border: 1px solid var(--card-border); padding: 12px 16px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; color: #cbd5e1; transition: 0.2s; }
+    .accordion-header:hover { background: #0f1c3a; color: #fff; }
+    .accordion-content { background: #050b18; border: 1px solid var(--card-border); border-top: none; padding: 16px; border-radius: 0 0 8px 8px; font-size: 12px; color: #94a3b8; line-height: 1.6; }
+    .limitations-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 8px; }
+    .limitation-item { background: #081124; padding: 10px; border-radius: 6px; border: 1px solid #162444; }
+    .limitation-item strong { color: #f1f5f9; display: block; margin-bottom: 2px; }
+
+    .disclaimer-box { background: var(--warn-bg); border-left: 4px solid var(--warn-border); padding: 14px; border-radius: 0 8px 8px 0; font-size: 12px; color: #fbbf24; margin-top: 24px; }
+    .hidden { display: none !important; }
+
+    @media print {
+      body { background: #fff !important; color: #000 !important; padding: 0 !important; }
+      .btn, header .header-status-group, .hide-print { display: none !important; }
+      .card { border: 1px solid #ccc !important; background: #fff !important; box-shadow: none !important; color: #000 !important; }
+      .metric-card { background: #f8fafc !important; border: 1px solid #ddd !important; }
+      .metric-val { color: #000 !important; }
+      .estimate-hero { background: #f1f5f9 !important; border: 1px solid #000 !important; color: #000 !important; }
+      .estimate-class, .estimate-interval { color: #000 !important; }
+      .disclaimer-box { background: #fef3c7 !important; color: #92400e !important; border-color: #d97706 !important; }
+      .accordion-content { display: block !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo-badge">DERMALYTICS</div>
+        <div>
+          <h1 style="font-size: 16px; font-weight: 800; letter-spacing: 0.5px;">Bio-Forensic Cutaneous Analysis</h1>
+          <p style="font-size: 11px; color: var(--text-muted);">Objective Contusion Chronometry & Chromophore Dispersion Pipeline</p>
+        </div>
+      </div>
+      <div class="header-status-group">
+        <div class="sys-status">
+          <span class="pulse-dot"></span> Pipeline: Standby
+        </div>
+        <div class="research-status">
+          Research Status: Prototype Stage (Image Processing + Experimental Temporal Classification)
+        </div>
+      </div>
+    </header>
+
+    <!-- SECTION 1: IMAGE INGESTION -->
+    <div class="card hide-print">
+      <div class="section-title">
+        <span>1. Image Upload & Calibration</span>
+        <span style="font-size: 11px; color: var(--text-muted); font-weight: 400;">Dynamic canvas-based pixel calculation</span>
+      </div>
+      
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+        Upload a cutaneous photograph of a contusion to calculate automated quality parameters, define an interactive Region of Interest (ROI), and execute mathematical colorimetry.
+      </p>
+
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+        <input type="file" id="fileInput" accept="image/jpeg, image/png, image/webp" style="display: none;">
+        <button class="btn" onclick="document.getElementById('fileInput').click()">
+          Upload Skin Image
+        </button>
+        <button class="btn btn-secondary" id="analyzeBtn" onclick="runAnalysis()" disabled>
+          Analyze Selected ROI
+        </button>
+      </div>
+
+      <!-- SYNTHETIC DEMONSTRATION SECTION -->
+      <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid #13223f;">
+        <span style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; display: block; margin-bottom: 8px;">
+          SYNTHETIC DEMONSTRATION DATA — NOT REAL FORENSIC EVIDENCE
+        </span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn btn-secondary" style="font-size: 11px; padding: 6px 12px;" onclick="loadDemoSample('acute')">Demo A: Erythemic Contusion (Synthetic 0–24h)</button>
+          <button class="btn btn-secondary" style="font-size: 11px; padding: 6px 12px;" onclick="loadDemoSample('subacute')">Demo B: Deoxy/Biliverdin (Synthetic 1–4d)</button>
+          <button class="btn btn-secondary" style="font-size: 11px; padding: 6px 12px;" onclick="loadDemoSample('resolving')">Demo C: Bilirubin Yellowing (Synthetic 4–10d)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: WORKSPACE & ROI SELECTION -->
+    <div id="workspaceCard" class="card hidden">
+      <div class="section-title">
+        <span>2. Preprocessing & Interactive ROI Isolation</span>
+        <span id="qualityTag" style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: #1e293b;">Quality: Pending</span>
+      </div>
+
+      <!-- Real Image Quality Assessment -->
+      <div class="grid-metrics" style="margin-bottom: 18px;">
+        <div class="metric-card">
+          <div class="metric-label">Resolution & Area</div>
+          <div id="resMetric" class="metric-val">--</div>
+          <div id="resSub" class="metric-sub">--</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Mean Illumination</div>
+          <div id="lumMetric" class="metric-val">--</div>
+          <div id="lumSub" class="metric-sub">--</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Focus / Sharpness (Laplacian Kernel)</div>
+          <div id="sharpMetric" class="metric-val">--</div>
+          <div id="sharpSub" class="metric-sub">--</div>
+        </div>
+      </div>
+
+      <div class="canvas-flex">
+        <!-- Interactive Source Canvas -->
+        <div class="canvas-panel">
+          <span style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">
+            Source Image (Drag on canvas to define ROI)
+          </span>
+          <div class="canvas-wrapper">
+            <canvas id="sourceCanvas"></canvas>
+          </div>
+          <p style="font-size: 11px; color: #64748b; margin-top: 6px;">
+            Click and drag with mouse to draw a custom bounding box over the bruise.
+          </p>
+        </div>
+
+        <!-- Dynamic Processed ROI Crop Canvas -->
+        <div class="canvas-panel">
+          <span style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">
+            Isolated Contusion ROI
+          </span>
+          <div class="canvas-wrapper" style="cursor: default;">
+            <canvas id="roiCanvas" width="180" height="180"></canvas>
+          </div>
+          <span id="roiDims" style="font-size: 11px; font-family: monospace; color: var(--accent-cyan); margin-top: 6px;">
+            ROI: None Selected
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: QUANTITATIVE DASHBOARD -->
+    <div id="dashboardCard" class="card hidden">
+      <div class="section-title">
+        <span>3. Quantitative Colorimetry & Experimental Temporal Classification</span>
+        <button class="btn btn-secondary hide-print" onclick="window.print()">Export Dossier (PDF)</button>
+      </div>
+
+      <!-- Feature-Derived Classification Banner -->
+      <div class="estimate-hero">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <span class="estimate-tag">EXPERIMENTAL TEMPORAL CLASSIFICATION</span>
+            <div id="estimatedClass" class="estimate-class">Calculating...</div>
+            <div id="estimatedInterval" class="estimate-interval">Prototype interval: --</div>
+          </div>
+          <span id="confBadge" class="badge-confidence" style="background: #1e3a8a; color: #93c5fd;">Confidence: Evaluating</span>
+        </div>
+        <p style="font-size: 11px; color: #cbd5e1; margin-top: 8px; font-style: italic;">
+          RESEARCH ESTIMATE — NOT VALIDATED FOR FORENSIC OR MEDICAL USE. Colour features are interpreted as indirect visual proxies associated with reported patterns of bruise evolution.
+        </p>
+      </div>
+
+      <!-- Real Measured Metrics Grid -->
+      <div class="grid-metrics">
+        <!-- RGB -->
+        <div class="metric-card">
+          <div class="metric-label">Mean Color (sRGB)</div>
+          <div id="meanRGBVal" class="metric-val">--</div>
+          <div id="rgbSwatch" style="height: 12px; border-radius: 3px; margin-top: 6px; border: 1px solid #334155;"></div>
+        </div>
+
+        <!-- LAB -->
+        <div class="metric-card">
+          <div class="metric-label">CIE-L*a*b* Coordinates</div>
+          <div id="labVal" class="metric-val">--</div>
+          <div class="metric-sub">a* (Erythema Proxy): <span id="subAStar" style="color: #f43f5e; font-weight: 700;">--</span> | b* (Bilirubin Proxy): <span id="subBStar" style="color: #eab308; font-weight: 700;">--</span></div>
+        </div>
+
+        <!-- HSV -->
+        <div class="metric-card">
+          <div class="metric-label">HSV Color Space</div>
+          <div id="hsvVal" class="metric-val">--</div>
+          <div class="metric-sub" id="hsvSub">Hue Angle & Saturation Index</div>
+        </div>
+
+        <!-- Variance -->
+        <div class="metric-card">
+          <div class="metric-label">Colour Variance (Std Dev)</div>
+          <div id="varianceVal" class="metric-val">--</div>
+          <div class="metric-sub" id="varianceSub">Spatial Heterogeneity</div>
+        </div>
+      </div>
+
+      <!-- Spatial Matrix & Dynamic Histogram -->
+      <div class="grid-metrics" style="margin-top: 16px;">
+        <div class="metric-card" style="display: flex; gap: 16px; align-items: center;">
+          <div>
+            <div class="metric-label">Spatial Colour Map</div>
+            <p style="font-size: 11px; color: var(--text-muted); max-width: 130px;">
+              Sub-cellular 16-zone localized chromatic variation across ROI.
+            </p>
+          </div>
+          <div class="spatial-matrix" id="spatialGrid"></div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Luminance / Chromatic Distribution (8 Bins)</div>
+          <div class="hist-container" id="histContainer"></div>
+          <div style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-top: 4px;">
+            <span>Shadows</span><span>Midtones</span><span>Highlights</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Why did Dermalytics produce this estimate? -->
+      <div style="background: #060d1f; border: 1px solid var(--card-border); border-radius: 8px; padding: 16px; margin-top: 16px;">
+        <div class="metric-label" style="color: var(--accent-cyan); margin-bottom: 6px;">Why did Dermalytics produce this estimate?</div>
+        <p id="explainRationale" style="font-size: 12px; color: #cbd5e1; line-height: 1.6;">
+          Analysis pending execution.
+        </p>
+      </div>
+
+      <!-- SECTION 4: ANALYSIS LIMITATIONS (COLLAPSIBLE) -->
+      <div style="margin-top: 16px;">
+        <div class="accordion-header" onclick="toggleLimitations()">
+          <span>Analysis Limitations & Forensic Constraints (Click to Expand)</span>
+          <span id="accordionIcon">+</span>
+        </div>
+        <div id="limitationsContent" class="accordion-content hidden">
+          <p style="margin-bottom: 8px;">
+            This prototype does not perform molecular assay or depth tomography. The user must account for the following established scientific limitations:
+          </p>
+          <div class="limitations-grid">
+            <div class="limitation-item">
+              <strong>1. Lighting & White Balance</strong>
+              Ambient chromatic temperature and specular reflections alter digital RGB channels without reflectance standards.
+            </div>
+            <div class="limitation-item">
+              <strong>2. Epidermal Melanin Baseline</strong>
+              Constitutive skin pigmentation absorbs and scatters visible light, attenuating underlying contusion chromophores differently across Fitzpatrick types.
+            </div>
+            <div class="limitation-item">
+              <strong>3. Anatomical & Depth Variation</strong>
+              Microvascular architecture, subcutaneous adipose thickness, and tissue pressure dictate extravasation depth and observable surface migration rates.
+            </div>
+            <div class="limitation-item">
+              <strong>4. Individual Healing Kinetics</strong>
+              Metabolic rate, age, vascular integrity, and pharmacological anti-coagulation substantially shift macroscopic resolution timelines.
+            </div>
+            <div class="limitation-item">
+              <strong>5. Lack of Longitudinal Dataset</strong>
+              Current logic is heuristic and rule-based; it lacks validation on statistically significant, calibrated multi-temporal clinical cohorts.
+            </div>
+            <div class="limitation-item">
+              <strong>6. Camera Hardware Divergence</strong>
+              Different sensor CMOS Bayer filters, compression artifacts (JPEG), and proprietary image signal processors (ISP) skew linear color values.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Limitations & Timestamp Footer -->
+      <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-top: 16px; flex-wrap: wrap; gap: 8px;">
+        <span id="reportTimestamp">Report Generated: --</span>
+        <span>Computational Logic: Indirect Chromophore Proxy Model v2.0</span>
+      </div>
+    </div>
+
+    <!-- MANDATORY PERMANENT SCIENTIFIC DISCLAIMER -->
+    <div class="disclaimer-box">
+      <strong>Important Scientific & Forensic Disclaimer:</strong>
+      <p style="margin-top: 4px;">
+        Dermalytics is an experimental educational research prototype. Bruise appearance varies with lighting, skin tone, injury characteristics and individual biology. The output is not a medical diagnosis and cannot establish the exact time of injury or serve as definitive forensic evidence.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // --- APPLICATION STATE ---
+    let originalImage = null;
+    let qualityData = null;
+    let isDrawing = false;
+    let startX = 0, startY = 0;
+    let roiBox = { x: 0, y: 0, w: 0, h: 0 };
+    let hasValidRoi = false;
+
+    // DOM Elements
+    const fileInput = document.getElementById('fileInput');
+    const sourceCanvas = document.getElementById('sourceCanvas');
+    const sCtx = sourceCanvas.getContext('2d');
+    const roiCanvas = document.getElementById('roiCanvas');
+    const rCtx = roiCanvas.getContext('2d');
+    const workspaceCard = document.getElementById('workspaceCard');
+    const dashboardCard = document.getElementById('dashboardCard');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+
+    // --- 1. IMAGE UPLOAD & PREPROCESSING ---
+    fileInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = new Image();
+        img.onload = function() {
+          loadIntoWorkspace(img);
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function loadIntoWorkspace(img) {
+      originalImage = img;
+      dashboardCard.classList.add('hidden');
+      workspaceCard.classList.remove('hidden');
+
+      // Aspect ratio preservation with max 500px bounding
+      const maxDim = 500;
+      let w = img.width;
+      let h = img.height;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) {
+          h = Math.round((h * maxDim) / w);
+          w = maxDim;
+        } else {
+          w = Math.round((w * maxDim) / h);
+          h = maxDim;
+        }
+      }
+
+      sourceCanvas.width = w;
+      sourceCanvas.height = h;
+      sCtx.drawImage(img, 0, 0, w, h);
+
+      // Automated image quality check on the ingested image
+      qualityData = assessImageQuality(sCtx, w, h);
+      renderQualityUI(qualityData);
+
+      // Default central ROI (50% center box)
+      const rw = Math.round(w * 0.5);
+      const rh = Math.round(h * 0.5);
+      const rx = Math.round((w - rw) / 2);
+      const ry = Math.round((h - rh) / 2);
+      setRoi(rx, ry, rw, rh);
+
+      analyzeBtn.disabled = false;
+    }
+
+    // --- 2. IMAGE QUALITY CHECK ENGINE ---
+    function assessImageQuality(ctx, w, h) {
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+      let totalLum = 0;
+      const lums = [];
+
+      for (let i = 0; i < data.length; i += 4) {
+        const lum = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+        totalLum += lum;
+        lums.push(lum);
+      }
+
+      const avgLum = Math.round(totalLum / (data.length / 4));
+
+      // Laplacian kernel convolution to detect edge focus / blur
+      let sampleCount = 0;
+      let lapSum = 0;
+      let lapSqSum = 0;
+      const step = Math.max(1, Math.floor(w / 120));
+
+      for (let y = 1; y < h - 1; y += step) {
+        for (let x = 1; x < w - 1; x += step) {
+          const idx = (y * w + x);
+          const val = lums[idx - w] + lums[idx + w] + lums[idx - 1] + lums[idx + 1] - (4 * lums[idx]);
+          lapSum += val;
+          lapSqSum += (val * val);
+          sampleCount++;
+        }
+      }
+      const meanLap = lapSum / sampleCount;
+      const laplacianVar = Math.round((lapSqSum / sampleCount) - (meanLap * meanLap));
+
+      let status = 'Good';
+      let reason = 'Optimal illumination and edge focus detected.';
+      if (avgLum < 45) {
+        status = 'Poor';
+        reason = 'Severe underexposure; pixel noise dominates chromophore signal.';
+      } else if (avgLum > 215) {
+        status = 'Poor';
+        reason = 'Overexposure / specular reflection detected; color clipping present.';
+      } else if (laplacianVar < 25) {
+        status = 'Acceptable (Blur Warning)';
+        reason = 'Soft edge focus or camera motion blur detected.';
+      } else if (w < 200 || h < 200) {
+        status = 'Poor';
+        reason = 'Low pixel resolution limits granular spatial matrix extraction.';
+      }
+
+      return { w, h, avgLum, laplacianVar, status, reason };
+    }
+
+    function renderQualityUI(q) {
+      document.getElementById('resMetric').innerText = `${q.w} × ${q.h} px`;
+      document.getElementById('resSub').innerText = q.w * q.h > 150000 ? 'High Area Resolution' : 'Standard Resolution';
+
+      document.getElementById('lumMetric').innerText = `${q.avgLum} / 255`;
+      document.getElementById('lumSub').innerText = q.avgLum < 50 ? 'Underexposed' : q.avgLum > 200 ? 'Overexposed' : 'Balanced Illumination';
+
+      document.getElementById('sharpMetric').innerText = `${q.laplacianVar}`;
+      document.getElementById('sharpSub').innerText = q.laplacianVar > 40 ? 'Sharp Edge Clarity' : 'Soft / Blur Detected';
+
+      const qTag = document.getElementById('qualityTag');
+      qTag.innerText = `Quality: ${q.status}`;
+      qTag.style.background = q.status === 'Good' ? '#065f46' : q.status.includes('Acceptable') ? '#854d0e' : '#991b1b';
+      qTag.style.color = '#fff';
+    }
+
+    // --- 3. INTERACTIVE ROI BOUNDING BOX CONTROLS ---
+    sourceCanvas.addEventListener('mousedown', (e) => {
+      const rect = sourceCanvas.getBoundingClientRect();
+      const scaleX = sourceCanvas.width / rect.width;
+      const scaleY = sourceCanvas.height / rect.height;
+      startX = (e.clientX - rect.left) * scaleX;
+      startY = (e.clientY - rect.top) * scaleY;
+      isDrawing = true;
+    });
+
+    sourceCanvas.addEventListener('mousemove', (e) => {
+      if (!isDrawing) return;
+      const rect = sourceCanvas.getBoundingClientRect();
+      const scaleX = sourceCanvas.width / rect.width;
+      const scaleY = sourceCanvas.height / rect.height;
+      const currentX = (e.clientX - rect.left) * scaleX;
+      const currentY = (e.clientY - rect.top) * scaleY;
+
+      const x = Math.min(startX, currentX);
+      const y = Math.min(startY, currentY);
+      const w = Math.abs(currentX - startX);
+      const h = Math.abs(currentY - startY);
+
+      redrawSourceWithROI(x, y, w, h);
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (!isDrawing) return;
+      isDrawing = false;
+      const rect = sourceCanvas.getBoundingClientRect();
+      const scaleX = sourceCanvas.width / rect.width;
+      const scaleY = sourceCanvas.height / rect.height;
+      const endX = (e.clientX - rect.left) * scaleX;
+      const endY = (e.clientY - rect.top) * scaleY;
+
+      const x = Math.round(Math.min(startX, endX));
+      const y = Math.round(Math.min(startY, endY));
+      const w = Math.round(Math.abs(endX - startX));
+      const h = Math.round(Math.abs(endY - startY));
+
+      if (w > 15 && h > 15) {
+        setRoi(x, y, w, h);
+      } else {
+        redrawSourceWithROI(roiBox.x, roiBox.y, roiBox.w, roiBox.h);
+      }
+    });
+
+    function setRoi(x, y, w, h) {
+      roiBox = { x, y, w, h };
+      hasValidRoi = true;
+      redrawSourceWithROI(x, y, w, h);
+
+      roiCanvas.width = w;
+      roiCanvas.height = h;
+      rCtx.drawImage(
+        originalImage,
+        (x / sourceCanvas.width) * originalImage.width,
+        (y / sourceCanvas.height) * originalImage.height,
+        (w / sourceCanvas.width) * originalImage.width,
+        (h / sourceCanvas.height) * originalImage.height,
+        0, 0, w, h
+      );
+
+      document.getElementById('roiDims').innerText = `ROI: ${w} × ${h} px at (${x}, ${y})`;
+    }
+
+    function redrawSourceWithROI(x, y, w, h) {
+      sCtx.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
+      sCtx.drawImage(originalImage, 0, 0, sourceCanvas.width, sourceCanvas.height);
+
+      sCtx.strokeStyle = '#06b6d4';
+      sCtx.lineWidth = 2;
+      sCtx.setLineDash([5, 4]);
+      sCtx.strokeRect(x, y, w, h);
+      sCtx.setLineDash([]);
+
+      // Semi-transparent overlay outside ROI
+      sCtx.fillStyle = 'rgba(3, 7, 18, 0.45)';
+      sCtx.fillRect(0, 0, sourceCanvas.width, y);
+      sCtx.fillRect(0, y + h, sourceCanvas.width, sourceCanvas.height - (y + h));
+      sCtx.fillRect(0, y, x, h);
+      sCtx.fillRect(x + w, y, sourceCanvas.width - (x + w), h);
+    }
+
+    // --- 4. FEATURE EXTRACTION & COLORIMETRIC CALCULATION ---
+    function runAnalysis() {
+      if (!hasValidRoi) return;
+
+      const roiData = rCtx.getImageData(0, 0, roiCanvas.width, roiCanvas.height).data;
+      const totalPixels = roiData.length / 4;
+
+      let sumR = 0, sumG = 0, sumB = 0;
+      let lumList = [];
+      const bins = [0, 0, 0, 0, 0, 0, 0, 0];
+
+      // 4x4 spatial cells
+      const cells = Array(16).fill(0).map(() => ({ r: 0, g: 0, b: 0, count: 0 }));
+
+      for (let i = 0; i < roiData.length; i += 4) {
+        const r = roiData[i];
+        const g = roiData[i+1];
+        const b = roiData[i+2];
+
+        sumR += r; sumG += g; sumB += b;
+        const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+        lumList.push(lum);
+
+        // 8-bin luminance distribution
+        const binIdx = Math.min(7, Math.floor(lum / 32));
+        bins[binIdx]++;
+
+        // Spatial cell index
+        const pixelIdx = i / 4;
+        const px = pixelIdx % roiCanvas.width;
+        const py = Math.floor(pixelIdx / roiCanvas.width);
+        const cx = Math.min(3, Math.floor((px / roiCanvas.width) * 4));
+        const cy = Math.min(3, Math.floor((py / roiCanvas.height) * 4));
+        const cIdx = cy * 4 + cx;
+
+        cells[cIdx].r += r;
+        cells[cIdx].g += g;
+        cells[cIdx].b += b;
+        cells[cIdx].count++;
+      }
+
+      // Mean RGB
+      const meanR = Math.round(sumR / totalPixels);
+      const meanG = Math.round(sumG / totalPixels);
+      const meanB = Math.round(sumB / totalPixels);
+
+      // Colour Variance (Std Dev)
+      let sumSqDiff = 0;
+      const meanLum = lumList.reduce((a, b) => a + b, 0) / totalPixels;
+      for (let l of lumList) {
+        sumSqDiff += Math.pow(l - meanLum, 2);
+      }
+      const stdDev = Math.sqrt(sumSqDiff / totalPixels).toFixed(1);
+
+      // CIE-L*a*b* conversion
+      const lab = rgb2lab(meanR, meanG, meanB);
+
+      // HSV conversion
+      const hsv = rgb2hsv(meanR, meanG, meanB);
+
+      // Experimental temporal classification
+      const estimation = calculateExperimentalClassification(lab.a, lab.b, hsv.h, hsv.s, stdDev, qualityData);
+
+      renderResultsUI(meanR, meanG, meanB, lab, hsv, stdDev, estimation, cells, bins);
+    }
+
+    // CIE-XYZ to Standard CIELAB (D65, 2°)
+    function rgb2lab(r, g, b) {
+      let rLin = r / 255, gLin = g / 255, bLin = b / 255;
+      rLin = rLin > 0.04045 ? Math.pow((rLin + 0.055) / 1.055, 2.4) : rLin / 12.92;
+      gLin = gLin > 0.04045 ? Math.pow((gLin + 0.055) / 1.055, 2.4) : gLin / 12.92;
+      bLin = bLin > 0.04045 ? Math.pow((bLin + 0.055) / 1.055, 2.4) : bLin / 12.92;
+
+      let X = (rLin * 0.4124 + gLin * 0.3576 + bLin * 0.1805) * 100;
+      let Y = (rLin * 0.2126 + gLin * 0.7152 + bLin * 0.0722) * 100;
+      let Z = (rLin * 0.0193 + gLin * 0.1192 + bLin * 0.9505) * 100;
+
+      X /= 95.047; Y /= 100.0; Z /= 108.883;
+      const f = t => t > 0.008856 ? Math.pow(t, 1/3) : (7.787 * t) + (16 / 116);
+
+      const fx = f(X), fy = f(Y), fz = f(Z);
+      const L = Math.round((116 * fy) - 16);
+      const a = Math.round(500 * (fx - fy));
+      const b_val = Math.round(200 * (fy - fz));
+
+      return { L, a, b: b_val };
+    }
+
+    // RGB to HSV
+    function rgb2hsv(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, v = max;
+      const d = max - min;
+      s = max === 0 ? 0 : d / max;
+
+      if (max === min) {
+        h = 0;
+      } else {
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+      }
+      return {
+        h: Math.round(h * 360),
+        s: Math.round(s * 100),
+        v: Math.round(v * 100)
+      };
+    }
+
+    // --- 5. SCIENTIFICALLY REFINED TEMPORAL CLASSIFIER ---
+    function calculateExperimentalClassification(aStar, bStar, hue, sat, variance, q) {
+      let classification = "";
+      let interval = "";
+      let confidence = "";
+      let rationale = "";
+
+      // Rule-based proxy classification using extracted metrics
+      if (aStar >= 14 && bStar <= 10) {
+        classification = "Acute / Erythemic Pattern";
+        interval = "Prototype interval: ~0–24 hours";
+        confidence = q.status === "Good" ? "Moderate" : "Low (Quality Constrained)";
+        rationale = `Elevated CIE-a* (+${aStar}) reflects high red-axis chromaticity, serving as a visual proxy for early extravasated blood before significant metabolic breakdown. Low CIE-b* (+${bStar}) indicates an absence of yellow-wavelength shift. Hue measured at ${hue}°, Saturation at ${sat}%, and color variance of ±${variance} σ indicate focused, un-dispersed erythema.`;
+      } else if (bStar < 4 || (hue >= 180 && hue <= 280)) {
+        classification = "Intermediate / Chromatic Transition Pattern";
+        interval = "Prototype interval: ~1–4 days";
+        confidence = q.status === "Good" ? "Moderate" : "Experimental";
+        rationale = `Shift toward blue-violet/green wavelengths with hue measured at ${hue}° and CIE-a* at ${aStar}. This reflects chromatic deoxygenation patterns and peripheral color diffusion (variance ±${variance} σ), associated with evolving intermediate cutaneous trauma.`;
+      } else if (bStar > 10 || (hue >= 35 && hue <= 80)) {
+        classification = "Late-Stage / Resolving Pattern";
+        interval = "Prototype interval: ~4–10 days";
+        confidence = "Experimental";
+        rationale = `Pronounced positive CIE-b* (+${bStar}) alongside a yellow-quadrant hue angle of ${hue}° and saturation of ${sat}%. This chromatic state acts as a visual proxy for reported later-stage discoloration patterns. Spatial heterogeneity (±${variance} σ) reflects wide dispersion across the contusion margin.`;
+      } else {
+        classification = "Indeterminate / Mixed Evolution Pattern";
+        interval = "Prototype interval: ~2–7 days (Broad Overlap)";
+        confidence = "Low";
+        rationale = `Intermediate color space coordinates (a*=${aStar}, b*=${bStar}, Hue=${hue}°) fall within overlapping stage thresholds. Inherent skin-tone melanin or diffuse illumination prevents discrete heuristic categorization.`;
+      }
+
+      return { classification, interval, confidence, rationale };
+    }
+
+    // --- 6. RENDER RESULTS TO DOM ---
+    function renderResultsUI(r, g, b, lab, hsv, stdDev, est, cells, bins) {
+      document.getElementById('meanRGBVal').innerText = `${r}, ${g}, ${b}`;
+      document.getElementById('rgbSwatch').style.backgroundColor = `rgb(${r},${g},${b})`;
+
+      document.getElementById('labVal').innerText = `L*: ${lab.L} | a*: ${lab.a} | b*: ${lab.b}`;
+      document.getElementById('subAStar').innerText = lab.a > 0 ? `+${lab.a}` : `${lab.a}`;
+      document.getElementById('subBStar').innerText = lab.b > 0 ? `+${lab.b}` : `${lab.b}`;
+
+      document.getElementById('hsvVal').innerText = `${hsv.h}° / ${hsv.s}% / ${hsv.v}%`;
+      document.getElementById('hsvSub').innerText = `Hue: ${hsv.h}° | Saturation: ${hsv.s}% | Value: ${hsv.v}%`;
+
+      document.getElementById('varianceVal').innerText = `± ${stdDev} σ`;
+      document.getElementById('varianceSub').innerText = Number(stdDev) > 20 ? 'High Heterogeneity (Margin Dispersion)' : 'Uniform Sub-Matrix';
+
+      // Estimation Hero
+      document.getElementById('estimatedClass').innerText = est.classification;
+      document.getElementById('estimatedInterval').innerText = est.interval;
+      
+      const confBadge = document.getElementById('confBadge');
+      confBadge.innerText = `Confidence: ${est.confidence}`;
+      confBadge.style.background = est.confidence.includes('Moderate') ? '#065f46' : '#78350f';
+      confBadge.style.color = '#fff';
+
+      document.getElementById('explainRationale').innerText = est.rationale;
+      document.getElementById('reportTimestamp').innerText = `Report Generated: ${new Date().toLocaleString()}`;
+
+      // Spatial 4x4 matrix rendering
+      const grid = document.getElementById('spatialGrid');
+      grid.innerHTML = '';
+      cells.forEach((c) => {
+        const div = document.createElement('div');
+        div.className = 'matrix-node';
+        const cr = c.count ? Math.round(c.r / c.count) : 0;
+        const cg = c.count ? Math.round(c.g / c.count) : 0;
+        const cb = c.count ? Math.round(c.b / c.count) : 0;
+        div.style.backgroundColor = `rgb(${cr},${cg},${cb})`;
+        div.title = `Cell: rgb(${cr}, ${cg}, ${cb})`;
+        grid.appendChild(div);
+      });
+
+      // 8-bin dynamic luminance histogram
+      const histContainer = document.getElementById('histContainer');
+      histContainer.innerHTML = '';
+      const maxBin = Math.max(...bins, 1);
+      bins.forEach((cnt, idx) => {
+        const bar = document.createElement('div');
+        bar.className = 'hist-bar';
+        const pct = Math.max(4, Math.round((cnt / maxBin) * 100));
+        bar.style.height = `${pct}%`;
+        bar.title = `Bin ${idx+1}: ${cnt} px`;
+        histContainer.appendChild(bar);
+      });
+
+      dashboardCard.classList.remove('hidden');
+      dashboardCard.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // --- 7. DEMO MODE SYNTHETIC SAMPLES ---
+    function loadDemoSample(type) {
+      const demoCanvas = document.createElement('canvas');
+      demoCanvas.width = 400;
+      demoCanvas.height = 400;
+      const dCtx = demoCanvas.getContext('2d');
+
+      // Base skin background
+      dCtx.fillStyle = '#d9a082';
+      dCtx.fillRect(0, 0, 400, 400);
+
+      const grad = dCtx.createRadialGradient(200, 200, 20, 200, 200, 130);
+      if (type === 'acute') {
+        grad.addColorStop(0, '#591624'); // Erythema red/purple
+        grad.addColorStop(0.7, '#7e2439');
+        grad.addColorStop(1, '#d9a082');
+      } else if (type === 'subacute') {
+        grad.addColorStop(0, '#2d3345'); // Deoxyhemoglobin dark blue
+        grad.addColorStop(0.6, '#40523e'); // Biliverdin green proxy
+        grad.addColorStop(1, '#d9a082');
+      } else {
+        grad.addColorStop(0, '#756832'); // Bilirubin yellow/brown proxy
+        grad.addColorStop(0.7, '#a89c44');
+        grad.addColorStop(1, '#d9a082');
+      }
+
+      dCtx.fillStyle = grad;
+      dCtx.beginPath();
+      dCtx.arc(200, 200, 130, 0, Math.PI * 2);
+      dCtx.fill();
+
+      const img = new Image();
+      img.onload = () => loadIntoWorkspace(img);
+      img.src = demoCanvas.toDataURL();
+    }
+
+    // --- 8. LIMITATIONS ACCORDION TOGGLE ---
+    function toggleLimitations() {
+      const content = document.getElementById('limitationsContent');
+      const icon = document.getElementById('accordionIcon');
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        icon.innerText = '−';
+      } else {
+        content.classList.add('hidden');
+        icon.innerText = '+';
+      }
+    }
+  </script>
+</body>
+</html>
